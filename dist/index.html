@@ -12,8 +12,8 @@
     />
     <title>GFS Studio – Präsentationsvorlage</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js"></script>
-    <script type="module" crossorigin src="/assets/main-CzdP201m.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/main-koQ8M-wJ.css">
+    <script type="module" crossorigin src="/assets/main-Bp3XLdzD.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/main-FZHL0qEs.css">
     <script type="module">import.meta.url;import("_").catch(()=>1);(async function*(){})().next();if(location.protocol!="file:"){window.__vite_is_modern_browser=true}</script>
     <script type="module">!function(){if(window.__vite_is_modern_browser)return;console.warn("vite: loading legacy chunks, syntax error above and the same error below should be ignored");var e=document.getElementById("vite-legacy-polyfill"),n=document.createElement("script");n.src=e.src,n.onload=function(){System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))},document.body.appendChild(n)}();</script>
   </head>
@@ -124,8 +124,23 @@
             <h2 class="assistant-title">Folienvorlagen</h2>
             <p class="layout-intro">Füge nur das Layout ein, das du gerade brauchst. Alle Titel und Texte sind einzeln verschiebbar und formatierbar.</p>
             <div class="layout-gallery" id="layout-gallery"></div>
-            <button class="delete-slide-button" id="delete-slide-button" type="button" disabled>Diese Zusatzfolie löschen</button>
-            <button class="delete-slide-button" id="duplicate-slide-button" type="button" disabled>Folie duplizieren</button>
+            
+            <div class="panel-divider"></div>
+            <p class="panel-kicker">STARTER-FOLIEN</p>
+            <h3 class="assistant-title" style="font-size: 1rem; font-weight: 500;">GFS-Starter wiederherstellen</h3>
+            <p class="layout-intro">Füge die ursprünglichen GFS-Starter-Folien (Titelfolie, Leitfrage, Fahrplan, Kernideen, Aha-Moment, Fazit, Fragerunde) wieder ein.</p>
+            <div class="starter-slides-actions">
+              <button class="starter-slides-button" id="restore-starter-slides" type="button">
+                <span aria-hidden="true">↺</span> Starter-Folien hinzufügen
+              </button>
+              <button class="starter-slides-button" id="reset-to-starter" type="button">
+                <span aria-hidden="true">⟲</span> Auf Starter zurücksetzen
+              </button>
+            </div>
+            
+            <div class="panel-divider"></div>
+            <button class="delete-slide-button" id="delete-slide-button" type="button">Folie löschen</button>
+            <button class="delete-slide-button" id="duplicate-slide-button" type="button">Folie duplizieren</button>
           </section>
           <section class="assistant-view" id="assistant-roadmap-view" role="tabpanel" aria-labelledby="assistant-roadmap-tab" hidden>
             <p class="panel-kicker">STRATEGISCHE PLANUNG</p>
@@ -331,10 +346,42 @@
               <span class="question-mark" aria-hidden="true">?</span>
             </div>
             <span class="slide-sticker sticker-questions" aria-hidden="true">DEINE<br />BÜHNE!</span>
-            <span class="slide-number">07 <i>/ 08</i></span>
+            <span class="slide-number">07 <i>/ 09</i></span>
           </section>
 
-          <section class="slide slide-model" aria-label="Folie 8" data-slide hidden>
+          <section class="slide slide-comparison" aria-label="Folie 8" data-slide hidden>
+            <span class="shape shape-comparison" aria-hidden="true"></span>
+            <div class="slide-content comparison-content">
+              <p class="eyebrow"><span class="eyebrow-mark">07</span> VERGLEICH</p>
+              <h2 class="slide-title" data-editable="comparison-title">Option A vs. Option B</h2>
+              <div class="comparison-grid">
+                <article class="comparison-side comparison-left">
+                  <span class="comparison-badge" aria-hidden="true">A</span>
+                  <h3 data-editable="comparison-left-title">Option A</h3>
+                  <ul class="comparison-list" data-editable="comparison-left-list">
+                    <li>Vorteil 1</li>
+                    <li>Vorteil 2</li>
+                    <li>Vorteil 3</li>
+                  </ul>
+                </article>
+                <div class="comparison-divider" aria-hidden="true">vs.</div>
+                <article class="comparison-side comparison-right">
+                  <span class="comparison-badge" aria-hidden="true">B</span>
+                  <h3 data-editable="comparison-right-title">Option B</h3>
+                  <ul class="comparison-list" data-editable="comparison-right-list">
+                    <li>Vorteil 1</li>
+                    <li>Vorteil 2</li>
+                    <li>Vorteil 3</li>
+                  </ul>
+                </article>
+              </div>
+              <p class="comparison-note" data-editable="comparison-note">Welche Option überzeugt dich mehr?</p>
+            </div>
+            <span class="slide-sticker sticker-comparison" aria-hidden="true">ABWÄGEN<br />& ENTSCHEIDEN</span>
+            <span class="slide-number">08 <i>/ 09</i></span>
+          </section>
+
+          <section class="slide slide-model" aria-label="Folie 9" data-slide hidden>
             <div class="slide-content model-content">
               <div class="model-heading">
                 <div>
@@ -596,6 +643,6 @@
     </main>
     <script nomodule>!function(){var e=document,t=e.createElement("script");if(!("noModule"in t)&&"onbeforeload"in t){var n=!1;e.addEventListener("beforeload",(function(e){if(e.target===t)n=!0;else if(!e.target.hasAttribute("nomodule")||!n)return;e.preventDefault()}),!0),t.type="module",t.src=".",e.head.appendChild(t),t.remove()}}();</script>
     <script nomodule crossorigin id="vite-legacy-polyfill" src="/assets/polyfills-legacy-CoGr0OzC.js"></script>
-    <script nomodule crossorigin id="vite-legacy-entry" data-src="/assets/main-legacy-Bllh9wEf.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
+    <script nomodule crossorigin id="vite-legacy-entry" data-src="/assets/main-legacy-hgTv0vyv.js">System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))</script>
   </body>
 </html>

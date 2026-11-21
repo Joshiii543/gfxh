@@ -643,7 +643,8 @@ const SLIDE_LAYOUTS = [
   { id: "starter-ideas", name: "Kernideen", description: "Drei zentrale Gedanken vorstellen", sourceSlideIndex: 3 },
   { id: "starter-wow", name: "Aha-Moment", description: "Überraschende Erkenntnis mit Quelle", sourceSlideIndex: 4 },
   { id: "starter-takeaway", name: "Fazit · Merksatz", description: "Leitfrage beantworten und bündeln", sourceSlideIndex: 5 },
-  { id: "starter-questions", name: "Fragerunde", description: "Abschluss und Diskussion", sourceSlideIndex: 6 },
+  { id: "starter-comparison", name: "Vergleich", description: "Optionen gegenüberstellen", sourceSlideIndex: 7 },
+  { id: "starter-questions", name: "Fragerunde", description: "Abschluss und Diskussion", sourceSlideIndex: 8 },
 ];
 const STATIC_SLIDE_COUNT = slides.length;
 
@@ -1685,8 +1686,9 @@ function updateSlideNavigation() {
   nextButton.disabled = activeIndex >= total - 1;
   panelSlideNumber.textContent = String(activeIndex + 1).padStart(2, "0");
   transitionLabel.textContent = `FOLIE ${String(activeIndex + 1).padStart(2, "0")} · ÜBERGANG`;
-  deleteSlideButton.disabled = activeIndex < STATIC_SLIDE_COUNT;
-  duplicateSlideButton.disabled = activeIndex < STATIC_SLIDE_COUNT;
+  // Enable delete for all slides (including starter slides)
+  deleteSlideButton.disabled = slides.length <= 1; // Prevent deleting the last slide
+  duplicateSlideButton.disabled = false; // Allow duplicating any slide
 }
 
 function renderLayoutGallery() {
@@ -1989,7 +1991,7 @@ function loadDynamicSlides() {
     else if (spec.layoutId === "section") main.innerHTML = '<span class="layout-section-mark">NEUES KAPITEL</span>';
     else if (spec.layoutId === "timeline") main.innerHTML = '<div class="layout-timeline"><div class="timeline-track"></div><div class="timeline-milestones"></div></div>';
     else if (spec.layoutId === "process") main.innerHTML = '<div class="layout-process"><div class="process-steps"></div></div>';
-    else if (spec.layoutId === "comparison") main.innerHTML = '<div class="layout-comparison"><div class="comparison-left"></div><div class="comparison-divider"></div><div class="comparison-right"></div></div>';
+    else if (spec.layoutId === "comparison") main.innerHTML = '<div class="layout-comparison"><div class="comparison-left"></div><div class="comparison-divider"></div><div class="comparparison-right"></div></div>';
     else if (spec.layoutId === "metrics") main.innerHTML = '<div class="layout-metrics"><div class="metrics-grid"></div></div>';
     else if (spec.layoutId === "team") main.innerHTML = '<div class="layout-team"><div class="team-grid"></div></div>';
     else if (spec.layoutId === "roadmap") main.innerHTML = '<div class="layout-roadmap"><div class="roadmap-phases"></div></div>';
@@ -2005,6 +2007,53 @@ function loadDynamicSlides() {
     stage.append(slide);
     slides.push(slide);
   });
+}
+
+function resetStarterSlides() {
+  // Reset the first STATIC_SLIDE_COUNT slides to their original state
+  const starterLayouts = SLIDE_LAYOUTS.filter(l => l.sourceSlideIndex !== undefined);
+  
+  for (let i = 0; i < STATIC_SLIDE_COUNT && i < starterLayouts.length; i++) {
+    const layout = starterLayouts[i];
+    const slide = slides[i];
+    
+    // Clone from the original source slide in the HTML
+    const sourceSlide = document.querySelector(`section.slide[data-slide]:nth-child(${i + 1})`);
+    if (sourceSlide) {
+      const newSlide = sourceSlide.cloneNode(true);
+      newSlide.classList.remove("is-entering");
+      newSlide.hidden = true;
+      newSlide.id = crypto.randomUUID();
+      newSlide.dataset.layoutId = layout.id;
+      newSlide.querySelectorAll("[id]").forEach((element) => element.removeAttribute("id"));
+      
+      // Update editable elements
+      const oldEditables = new Set(slide.querySelectorAll("[data-editable]"));
+      oldEditables.forEach((element) => localStorage.removeItem(`${STORAGE_PREFIX}${element.dataset.editable}`));
+      editableElements.splice(0, editableElements.length, ...editableElements.filter((element) => !oldEditables.has(element)));
+      
+      newSlide.querySelectorAll("[data-editable]").forEach((element) => {
+        element.dataset.editable = `template-${newSlide.id}-${element.dataset.editable}`;
+        editableElements.push(element);
+        registerEditableElement(element);
+      });
+      
+      // Replace in DOM
+      slide.replaceWith(newSlide);
+      slides[i] = newSlide;
+      
+      // Clear and reset elements for this slide
+      localStorage.removeItem(`${STORAGE_PREFIX}elements:${i}`);
+    }
+  }
+  
+  // Clear dynamic slides specs
+  localStorage.setItem(DYNAMIC_SLIDES_KEY, JSON.stringify([]));
+  
+  // Recreate dots and go to first slide
+  dotsContainer.replaceChildren();
+  createSlideDots();
+  setSlide(0);
 }
 
 function createSlideDot(index) {
@@ -2074,21 +2123,21 @@ function handleSlideDragEnd(event) {
 }
 
 function reorderSlides(fromIndex, toIndex) {
-  // Adjust for static slides
-  if (fromIndex < STATIC_SLIDE_COUNT || toIndex < STATIC_SLIDE_COUNT) {
-    showStatus("Die ersten Folien können nicht verschoben werden.");
+  if (fromIndex < 0 || fromIndex >= slides.length || toIndex < 0 || toIndex >= slides.length) {
     return;
   }
   
-  const dynamicFromIndex = fromIndex - STATIC_SLIDE_COUNT;
-  const dynamicToIndex = toIndex - STATIC_SLIDE_COUNT;
+  if (fromIndex === toIndex) return;
+  
+  const isFromStatic = fromIndex < STATIC_SLIDE_COUNT;
+  const isToStatic = toIndex < STATIC_SLIDE_COUNT;
   
   // Reorder in DOM
   const slideElements = Array.from(slides);
   const slide = slideElements[fromIndex];
   const targetSlide = slideElements[toIndex];
   
-  if (dynamicFromIndex < dynamicToIndex) {
+  if (fromIndex < toIndex) {
     targetSlide.after(slide);
   } else {
     targetSlide.before(slide);
@@ -2098,17 +2147,36 @@ function reorderSlides(fromIndex, toIndex) {
   slides.length = 0;
   slides.push(...document.querySelectorAll("[data-slide]"));
   
-  // Update dynamic slides storage
-  const specs = JSON.parse(localStorage.getItem(DYNAMIC_SLIDES_KEY) || "[]");
-  const [removed] = specs.splice(dynamicFromIndex, 1);
-  specs.splice(dynamicToIndex, 0, removed);
-  localStorage.setItem(DYNAMIC_SLIDES_KEY, JSON.stringify(specs));
+  // Update dynamic slides storage if both are dynamic slides
+  if (!isFromStatic && !isToStatic) {
+    const specs = JSON.parse(localStorage.getItem(DYNAMIC_SLIDES_KEY) || "[]");
+    const dynamicFromIndex = fromIndex - STATIC_SLIDE_COUNT;
+    const dynamicToIndex = toIndex - STATIC_SLIDE_COUNT;
+    const [removed] = specs.splice(dynamicFromIndex, 1);
+    specs.splice(dynamicToIndex, 0, removed);
+    localStorage.setItem(DYNAMIC_SLIDES_KEY, JSON.stringify(specs));
+  }
+  // If moving static to dynamic or vice versa, we need to rebuild specs
+  else if (isFromStatic !== isToStatic) {
+    rebuildDynamicSlideSpecs();
+  }
   
   // Recreate dots and update
   dotsContainer.replaceChildren();
   createSlideDots();
   setSlide(toIndex);
   showStatus(`Folie ${fromIndex + 1} verschoben.`);
+}
+
+function rebuildDynamicSlideSpecs() {
+  const specs = [];
+  for (let i = STATIC_SLIDE_COUNT; i < slides.length; i++) {
+    const slide = slides[i];
+    const layoutId = slide.dataset.layoutId || "blank";
+    const slideId = slide.id;
+    specs.push({ id: slideId, layoutId });
+  }
+  localStorage.setItem(DYNAMIC_SLIDES_KEY, JSON.stringify(specs));
 }
 
 function setAssistantPanelOpen(open) {
@@ -4487,14 +4555,16 @@ chatInput.addEventListener("keydown", (event) => {
 });
 checkSlideButton.addEventListener("click", () => void checkCurrentSlide());
 // Entfernt eine eigene (dynamische) Folie samt Elementen und Übergang. Gibt true zurück, wenn gelöscht wurde.
-function deleteDynamicSlide(deletedIndex) {
-  if (deletedIndex < STATIC_SLIDE_COUNT || deletedIndex >= slides.length) return false;
+function deleteSlideAtIndex(deletedIndex) {
+  if (deletedIndex < 0 || deletedIndex >= slides.length) return false;
+  
+  const isStaticSlide = deletedIndex < STATIC_SLIDE_COUNT;
   const specs = getDynamicSlideSpecs();
-  const dynamicIndex = deletedIndex - STATIC_SLIDE_COUNT;
-  if (!specs[dynamicIndex]) return false;
-  specs.splice(dynamicIndex, 1);
+  
   try {
     const lastIndex = slides.length - 1;
+    
+    // Shift elements and transitions for all slides after the deleted one
     for (let index = deletedIndex + 1; index <= lastIndex; index += 1) {
       const elements = localStorage.getItem(`${STORAGE_PREFIX}elements:${index}`);
       const transition = localStorage.getItem(`${TRANSITION_STORAGE_KEY}${index}`);
@@ -4505,43 +4575,60 @@ function deleteDynamicSlide(deletedIndex) {
     }
     localStorage.removeItem(`${STORAGE_PREFIX}elements:${lastIndex}`);
     localStorage.removeItem(`${TRANSITION_STORAGE_KEY}${lastIndex}`);
-    localStorage.setItem(DYNAMIC_SLIDES_KEY, JSON.stringify(specs));
+    
+    // If it's a dynamic slide, update specs
+    if (!isStaticSlide) {
+      const dynamicIndex = deletedIndex - STATIC_SLIDE_COUNT;
+      if (specs[dynamicIndex]) {
+        specs.splice(dynamicIndex, 1);
+        localStorage.setItem(DYNAMIC_SLIDES_KEY, JSON.stringify(specs));
+      }
+    }
+    
+    // Remove slide from DOM and arrays
     const removedSlide = slides[deletedIndex];
     const removedEditables = new Set(removedSlide.querySelectorAll("[data-editable]"));
     removedEditables.forEach((element) => localStorage.removeItem(`${STORAGE_PREFIX}${element.dataset.editable}`));
     editableElements.splice(0, editableElements.length, ...editableElements.filter((element) => !removedEditables.has(element)));
     removedSlide.remove();
     slides.splice(deletedIndex, 1);
+    
+    // Update STATIC_SLIDE_COUNT if we deleted a static slide
+    // Note: We don't actually change the constant, but we track which slides are "starter" slides
+    // by checking if they have a sourceSlideIndex in SLIDE_LAYOUTS
+    
     dotsContainer.replaceChildren();
     createSlideDots();
     selectedElementId = null;
     activeIndex = -1;
     setSlide(Math.min(deletedIndex, slides.length - 1));
+    showStatus(`Folie ${deletedIndex + 1} gelöscht.`);
     return true;
   } catch (error) {
-    console.error("Die Zusatzfolie konnte nicht gelöscht werden.", error);
-    showStatus("Die Zusatzfolie konnte nicht gelöscht werden.");
+    console.error("Die Folie konnte nicht gelöscht werden.", error);
+    showStatus("Die Folie konnte nicht gelöscht werden.");
     return false;
   }
 }
 
 // Wird von Undo/Redo und vom Import genutzt.
 function deleteSlide(index) {
-  return deleteDynamicSlide(index);
+  return deleteSlideAtIndex(index);
 }
 
 deleteSlideButton.addEventListener("click", () => {
-  if (deleteDynamicSlide(activeIndex)) showStatus("Zusatzfolie gelöscht.");
+  if (deleteSlideAtIndex(activeIndex)) showStatus("Folie gelöscht.");
 });
 duplicateSlideButton.addEventListener("click", () => {
-  if (activeIndex < STATIC_SLIDE_COUNT) return;
-  const specs = getDynamicSlideSpecs();
-  const dynamicIndex = activeIndex - STATIC_SLIDE_COUNT;
-  if (!specs[dynamicIndex]) return;
+  if (slides.length >= STATIC_SLIDE_COUNT + 40) {
+    showStatus("Maximal 40 zusätzliche Folien sind möglich.");
+    return;
+  }
   
-  // Get the slide to duplicate
   const slideToDuplicate = slides[activeIndex];
   const slideId = crypto.randomUUID();
+  const layoutId = slideToDuplicate.dataset.layoutId || "blank";
+  const isStaticSlide = activeIndex < STATIC_SLIDE_COUNT;
   
   // Clone the slide
   const newSlide = slideToDuplicate.cloneNode(true);
@@ -4549,12 +4636,17 @@ duplicateSlideButton.addEventListener("click", () => {
   newSlide.hidden = true;
   newSlide.id = slideId;
   newSlide.dataset.slide = "";
+  newSlide.dataset.layoutId = layoutId;
   
   // Update editable element IDs
   const editableElementCount = editableElements.length;
   newSlide.querySelectorAll("[data-editable]").forEach((element) => {
     const oldEditable = element.dataset.editable;
-    element.dataset.editable = oldEditable.replace(/template-[^-]+-/, `template-${slideId}-`);
+    if (isStaticSlide) {
+      element.dataset.editable = `template-${slideId}-${element.dataset.editable}`;
+    } else {
+      element.dataset.editable = oldEditable.replace(/template-[^-]+-/, `template-${slideId}-`);
+    }
     editableElements.push(element);
     registerEditableElement(element);
   });
@@ -4577,10 +4669,17 @@ duplicateSlideButton.addEventListener("click", () => {
     localStorage.setItem(`${TRANSITION_STORAGE_KEY}${activeIndex + 1}`, transition);
   }
   
-  // Update specs
-  const newSpec = { id: slideId, layoutId: specs[dynamicIndex].layoutId };
-  specs.splice(dynamicIndex + 1, 0, newSpec);
-  localStorage.setItem(DYNAMIC_SLIDES_KEY, JSON.stringify(specs));
+  // Update specs for dynamic slides
+  if (!isStaticSlide) {
+    const specs = getDynamicSlideSpecs();
+    const dynamicIndex = activeIndex - STATIC_SLIDE_COUNT;
+    const newSpec = { id: slideId, layoutId };
+    specs.splice(dynamicIndex + 1, 0, newSpec);
+    localStorage.setItem(DYNAMIC_SLIDES_KEY, JSON.stringify(specs));
+  } else {
+    // If duplicating a static slide, it becomes a dynamic slide
+    rebuildDynamicSlideSpecs();
+  }
   
   // Recreate dots and select new slide
   dotsContainer.replaceChildren();
@@ -4588,6 +4687,37 @@ duplicateSlideButton.addEventListener("click", () => {
   setSlide(activeIndex + 1);
   showStatus("Folie dupliziert.");
 });
+
+// Starter slides buttons
+const restoreStarterSlidesButton = document.querySelector("#restore-starter-slides");
+const resetToStarterButton = document.querySelector("#reset-to-starter");
+
+if (restoreStarterSlidesButton) {
+  restoreStarterSlidesButton.addEventListener("click", () => {
+    const starterLayouts = SLIDE_LAYOUTS.filter(l => l.sourceSlideIndex !== undefined);
+    starterLayouts.forEach(layout => {
+      if (slides.length < STATIC_SLIDE_COUNT + 40) {
+        addSlideFromLayout(layout.id);
+      }
+    });
+    showStatus("Starter-Folien hinzugefügt.");
+  });
+}
+
+if (resetToStarterButton) {
+  resetToStarterButton.addEventListener("click", () => {
+    if (confirm("Alle aktuellen Folien werden gelöscht und durch die ursprünglichen Starter-Folien ersetzt. Fortfahren?")) {
+      // Delete all dynamic slides first
+      while (slides.length > STATIC_SLIDE_COUNT) {
+        deleteSlideAtIndex(STATIC_SLIDE_COUNT);
+      }
+      // Reset static slides to original state
+      resetStarterSlides();
+      showStatus("Auf Starter-Folien zurückgesetzt.");
+    }
+  });
+}
+
 addVideoButton.addEventListener("click", () => {
   const url = window.prompt("YouTube- oder Vimeo-Link einfügen:");
   if (!url) return;
